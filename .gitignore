@@ -1,0 +1,15 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# sqlite sidecars (the population.db file itself IS committed by the workflow)
+*.db-wal
+*.db-shm
+
+# dotnet harness
+tools/CryptoVectors/bin/
+tools/CryptoVectors/obj/
+tools/_vectors/
