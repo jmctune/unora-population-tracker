@@ -1,0 +1,99 @@
+name: Sample population
+
+on:
+  schedule:
+    # top of every hour (UTC). GitHub may delay scheduled runs under load.
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+# Serialize runs so the schedule and an external workflow_dispatch never overlap.
+# Combined with the per-hour guard below, this makes sampling idempotent: whichever
+# trigger fires first records the hour, and any later run that same hour no-ops. So
+# you can drive it from a reliable external cron and keep the GitHub schedule as a
+# backup without getting duplicate samples.
+concurrency:
+  group: population-sample
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Skip if this hour already has a sample
+        id: guard
+        run: |
+          python - <<'PY'
+          import datetime, os, sqlite3
+
+          hour = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H")
+          already = False
+          try:
+              con = sqlite3.connect("population.db")
+              # only a *successful* sample counts, so a failed earlier attempt this
+              # hour can still be retried by the backup trigger
+              row = con.execute(
+                  "SELECT 1 FROM population "
+                  "WHERE substr(recorded_at, 1, 13) = ? AND total IS NOT NULL LIMIT 1",
+                  (hour,),
+              ).fetchone()
+              already = row is not None
+          except sqlite3.Error:
+              already = False  # no database/table yet -> proceed
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"already={'true' if already else 'false'}\n")
+          print(f"hour={hour} already={already}")
+          PY
+
+      - name: Record a population sample
+        if: steps.guard.outputs.already != 'true'
+        env:
+          DA_HOST: ${{ secrets.DA_HOST }}
+          DA_PORT: ${{ secrets.DA_PORT }}
+          DA_NAME: ${{ secrets.DA_NAME }}
+          DA_PASSWORD: ${{ secrets.DA_PASSWORD }}
+          # optional pin: leave the secret unset to auto-read the version from the
+          # patch server each run (cached by dll hash in .client-version-cache.json,
+          # which the single commit below carries forward). set it only to force one.
+          DA_CLIENT_VERSION: ${{ secrets.DA_CLIENT_VERSION }}
+          PYTHONPATH: src
+        run: |
+          python -m population_tracker --database population.db
+
+      - name: Export dashboard data
+        if: steps.guard.outputs.already != 'true'
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m population_tracker.export --database population.db --output docs/population.json
+
+      - name: Commit and force-push (single, overwritten commit — no history kept)
+        if: steps.guard.outputs.already != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Rebuild main as one root commit holding the current tree (code + data),
+          # so the repo never accumulates hourly history. The working tree already
+          # has the latest code from checkout, plus this run's db + json.
+          git checkout --orphan flat
+          git add -A
+          git commit -m "population data (auto-updated hourly)"
+          git branch -M flat main
+
+          # --force-with-lease still refuses to clobber a manual push that landed
+          # after checkout; the run then fails and the next hour recovers.
+          git push --force-with-lease origin main
