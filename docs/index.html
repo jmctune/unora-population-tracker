@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unora Population</title>
+<style>
+  :root {
+    color-scheme: light;
+    --plane:          #f9f9f7;
+    --surface:        #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --axis:           #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --good:           #006300;
+
+    --series-total:   #2a78d6;
+    --series-active:  #0f9b8e;
+    --series-peasant: #2a78d6;
+    --series-warrior: #e34948;
+    --series-rogue:   #eda100;
+    --series-wizard:  #4a3aa7;
+    --series-priest:  #1baf7a;
+    --series-monk:    #eb6834;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plane:          #0d0d0d;
+      --surface:        #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+
+      --series-total:   #3987e5;
+      --series-active:  #22b8a6;
+      --series-peasant: #3987e5;
+      --series-warrior: #e66767;
+      --series-rogue:   #c98500;
+      --series-wizard:  #9085e9;
+      --series-priest:  #199e70;
+      --series-monk:    #d95926;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:          #0d0d0d;
+    --surface:        #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255,255,255,0.10);
+    --good:           #0ca30c;
+
+    --series-total:   #3987e5;
+    --series-active:  #22b8a6;
+    --series-peasant: #3987e5;
+    --series-warrior: #e66767;
+    --series-rogue:   #c98500;
+    --series-wizard:  #9085e9;
+    --series-priest:  #199e70;
+    --series-monk:    #d95926;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 20px 56px; }
+
+  header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  header.top h1 { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  header.top .sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+  .theme-btn {
+    font: inherit; font-size: 13px; color: var(--text-secondary);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  .theme-btn:hover { color: var(--text-primary); }
+
+  .hero {
+    display: grid; grid-template-columns: minmax(180px, 220px) 1fr; gap: 16px;
+    margin: 22px 0; align-items: stretch;
+  }
+  @media (max-width: 620px) { .hero { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px;
+  }
+  .hero-num .label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .hero-num .value { font-size: 52px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.05; margin-top: 4px; }
+  .hero-num .sub-stat { font-size: 13px; color: var(--series-active); font-weight: 560; margin-top: 6px; }
+  .hero-num .delta { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+  .hero-num .delta.up { color: var(--good); }
+  .hero-num .stamp { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  @media (max-width: 720px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 380px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .tile .name { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 12px; }
+  .tile .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .tile .n { font-size: 26px; font-weight: 640; margin-top: 6px; letter-spacing: -0.01em; }
+
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 4px; }
+  .controls .lbl { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 2px; }
+  .controls .tz { color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    font: inherit; font-size: 13px; color: var(--text-secondary); background: var(--surface);
+    border: 0; border-left: 1px solid var(--border); padding: 6px 12px; cursor: pointer;
+  }
+  .seg button:first-child { border-left: 0; }
+  .seg button[aria-pressed="true"] { background: var(--series-total); color: #fff; }
+
+  .chart-card { margin-top: 16px; }
+  .chart-card h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .chart-card .note { color: var(--text-muted); font-size: 12px; margin: 0 0 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 12px; }
+  .legend button {
+    display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px;
+    color: var(--text-secondary); background: none; border: 0; padding: 2px 0; cursor: pointer;
+  }
+  .legend button .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .legend button[aria-pressed="false"] { opacity: 0.38; }
+  .legend button[aria-pressed="false"] .dot { box-shadow: none; }
+
+  .plot { position: relative; width: 100%; }
+  .plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 5; min-width: 130px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; font-size: 12px; color: var(--text-primary);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12); opacity: 0; transition: opacity .08s;
+  }
+  .tooltip .t-time { color: var(--text-muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 7px; padding: 1px 0; }
+  .tooltip .t-row .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .tooltip .t-row .t-lbl { color: var(--text-secondary); }
+  .tooltip .t-row .t-val { margin-left: auto; font-weight: 620; font-variant-numeric: tabular-nums; }
+
+  footer { margin-top: 30px; color: var(--text-muted); font-size: 12px; }
+  footer .note { margin-bottom: 8px; max-width: 620px; }
+  .empty { color: var(--text-secondary); font-size: 14px; padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Unora Population</h1>
+      <div class="sub">Online players, active (non-AFK) count, and class breakdown, sampled hourly.</div>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Theme</button>
+  </header>
+
+  <div id="app"></div>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+"use strict";
+
+const CLASSES = [
+  { key: "peasant", label: "Peasant", varName: "--series-peasant" },
+  { key: "warrior", label: "Warrior", varName: "--series-warrior" },
+  { key: "rogue",   label: "Rogue",   varName: "--series-rogue"   },
+  { key: "wizard",  label: "Wizard",  varName: "--series-wizard"  },
+  { key: "priest",  label: "Priest",  varName: "--series-priest"  },
+  { key: "monk",    label: "Monk",    varName: "--series-monk"    },
+];
+
+const RANGES = [
+  { key: "24h", label: "24h", ms: 24 * 3600e3 },
+  { key: "7d",  label: "7 days", ms: 7 * 864e5 },
+  { key: "30d", label: "30 days", ms: 30 * 864e5 },
+  { key: "all", label: "All", ms: Infinity },
+];
+
+const state = {
+  data: null,
+  samples: [],
+  range: "7d",
+  hidden: new Set(),      // hidden class keys in the by-class chart
+};
+
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const el = (tag, attrs = {}, kids = []) => {
+  const ns = tag === "svg" || SVG_TAGS.has(tag) ? "http://www.w3.org/2000/svg" : null;
+  const node = ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.setAttribute("class", v);
+    else if (k === "text") node.textContent = v;
+    else if (k in node && ns === null) node[k] = v;
+    else node.setAttribute(k, v);
+  }
+  for (const kid of [].concat(kids)) if (kid) node.appendChild(kid);
+  return node;
+};
+const SVG_TAGS = new Set(["g", "path", "line", "rect", "circle", "text", "polyline"]);
+
+const fmtInt = (n) => n.toLocaleString("en-US");
+
+function niceMax(v) {
+  if (v <= 5) return Math.max(5, v);
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  const steps = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  for (const s of steps) if (s * pow >= v) return s * pow;
+  return 10 * pow;
+}
+
+function niceTicks(max, count) {
+  const ticks = [];
+  for (let i = 0; i <= count; i++) ticks.push(Math.round((max * i) / count));
+  return [...new Set(ticks)];
+}
+
+function fmtAxisTime(d, spanMs) {
+  const opts = spanMs <= 2 * 864e5
+    ? { hour: "2-digit", minute: "2-digit", hour12: false }
+    : { month: "short", day: "numeric" };
+  return new Intl.DateTimeFormat("en-US", opts).format(d);
+}
+const fmtFullTime = (d) =>
+  new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+
+// short label for the viewer's local time zone (e.g. "PST", "GMT+2") - all times
+// on the page are formatted in this zone, so it is shown to the reader
+function localTZLabel() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(new Date());
+    const tz = parts.find((p) => p.type === "timeZoneName");
+    return (tz && tz.value) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "local time";
+  }
+}
+
+// ---- data loading ----
+
+async function load() {
+  try {
+    const res = await fetch("population.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    state.data = await res.json();
+  } catch (err) {
+    document.getElementById("app").innerHTML =
+      '<div class="empty">Could not load <code>population.json</code>. ' +
+      "Once the workflow has run at least once, this page will show the data.</div>";
+    return;
+  }
+  state.samples = (state.data.samples || []).map((s) => ({
+    t: new Date(s.recorded_at),
+    total: s.total,
+    active: s.active,
+    classes: Object.fromEntries(CLASSES.map((c) => [c.key, s[c.key]])),
+  })).sort((a, b) => a.t - b.t);
+
+  render();
+  window.addEventListener("resize", debounce(render, 150));
+}
+
+function debounce(fn, ms) {
+  let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); };
+}
+
+function filtered() {
+  const range = RANGES.find((r) => r.key === state.range);
+  if (!range || range.ms === Infinity) return state.samples;
+  const cutoff = Date.now() - range.ms;
+  return state.samples.filter((s) => s.t.getTime() >= cutoff);
+}
+
+// ---- rendering ----
+
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  if (!state.samples.length) {
+    app.innerHTML = '<div class="empty">No samples recorded yet.</div>';
+    return;
+  }
+
+  app.appendChild(renderHero());
+  app.appendChild(renderControls());
+  app.appendChild(renderTotalChart());
+  app.appendChild(renderClassChart());
+
+  renderFooter();
+}
+
+function lastSuccessful() {
+  for (let i = state.samples.length - 1; i >= 0; i--)
+    if (state.samples[i].total != null) return state.samples[i];
+  return null;
+}
+function prevSuccessful(before) {
+  const idx = state.samples.indexOf(before);
+  for (let i = idx - 1; i >= 0; i--)
+    if (state.samples[i].total != null) return state.samples[i];
+  return null;
+}
+
+function renderHero() {
+  const latest = lastSuccessful();
+  const box = el("div", { class: "hero" });
+
+  const num = el("div", { class: "card hero-num" });
+  num.appendChild(el("div", { class: "label", text: "Players online" }));
+
+  if (!latest) {
+    num.appendChild(el("div", { class: "value", text: "—" }));
+    num.appendChild(el("div", { class: "stamp", text: "No successful reading yet" }));
+  } else {
+    num.appendChild(el("div", { class: "value", text: fmtInt(latest.total) }));
+    if (latest.active != null) {
+      const afk = latest.total - latest.active;
+      num.appendChild(el("div", {
+        class: "sub-stat",
+        text: `${fmtInt(latest.active)} active · ${fmtInt(afk)} away`,
+      }));
+    }
+    const prev = prevSuccessful(latest);
+    if (prev) {
+      const d = latest.total - prev.total;
+      const arrow = d > 0 ? "▲" : d < 0 ? "▼" : "•";
+      const delta = el("div", { class: "delta" + (d > 0 ? " up" : ""), text: `${arrow} ${d >= 0 ? "+" : ""}${d} vs previous` });
+      num.appendChild(delta);
+    }
+    num.appendChild(el("div", { class: "stamp", text: "as of " + fmtFullTime(latest.t) }));
+  }
+
+  const tilesCard = renderTiles(latest);
+  box.appendChild(num);
+  box.appendChild(tilesCard);
+  return box;
+}
+
+function renderTiles(latest = lastSuccessful()) {
+  const grid = el("div", { class: "tiles" });
+  for (const c of CLASSES) {
+    const tile = el("div", { class: "tile" });
+    const name = el("div", { class: "name" });
+    name.appendChild(el("span", { class: "dot", style: `background:${cssVar(c.varName)}` }));
+    name.appendChild(el("span", { text: c.label }));
+    tile.appendChild(name);
+    const val = latest && latest.classes[c.key] != null ? fmtInt(latest.classes[c.key]) : "—";
+    tile.appendChild(el("div", { class: "n", text: val }));
+    grid.appendChild(tile);
+  }
+  return grid;
+}
+
+function renderControls() {
+  const row = el("div", { class: "controls" });
+  row.appendChild(el("span", { class: "lbl", text: "Range" }));
+  const seg = el("div", { class: "seg" });
+  for (const r of RANGES) {
+    const b = el("button", { type: "button", text: r.label });
+    b.setAttribute("aria-pressed", String(state.range === r.key));
+    b.addEventListener("click", () => { state.range = r.key; render(); });
+    seg.appendChild(b);
+  }
+  row.appendChild(seg);
+  row.appendChild(el("span", { class: "tz", text: `times in ${localTZLabel()}` }));
+  return row;
+}
+
+function renderTotalChart() {
+  const card = el("div", { class: "card chart-card" });
+  card.appendChild(el("h2", { text: "Players online over time" }));
+  card.appendChild(el("p", { class: "note", text: "Total aislings in the country list, and how many are active (not daydreaming or lone hunter, i.e. at the keyboard). Gaps are hours the login failed." }));
+
+  const samples = filtered();
+  const series = [
+    {
+      key: "total", label: "Total online", color: cssVar("--series-total"), area: true,
+      points: samples.map((s) => ({ t: s.t, v: s.total })),
+    },
+    {
+      key: "active", label: "Active", color: cssVar("--series-active"), area: false,
+      points: samples.map((s) => ({ t: s.t, v: s.active })),
+    },
+  ];
+  card.appendChild(buildChart(samples, series, { area: true, single: false, endLabels: true }));
+  return card;
+}
+
+function renderClassChart() {
+  const card = el("div", { class: "card chart-card" });
+  card.appendChild(el("h2", { text: "Players by class over time" }));
+  card.appendChild(el("p", { class: "note", text: "Each class from the country list. Click a class to toggle it." }));
+
+  const legend = el("div", { class: "legend" });
+  for (const c of CLASSES) {
+    const b = el("button", { type: "button" });
+    b.setAttribute("aria-pressed", String(!state.hidden.has(c.key)));
+    b.appendChild(el("span", { class: "dot", style: `background:${cssVar(c.varName)}` }));
+    b.appendChild(el("span", { text: c.label }));
+    b.addEventListener("click", () => {
+      if (state.hidden.has(c.key)) state.hidden.delete(c.key); else state.hidden.add(c.key);
+      render();
+    });
+    legend.appendChild(b);
+  }
+  card.appendChild(legend);
+
+  const samples = filtered();
+  const series = CLASSES.filter((c) => !state.hidden.has(c.key)).map((c) => ({
+    key: c.key, label: c.label, color: cssVar(c.varName),
+    points: samples.map((s) => ({ t: s.t, v: s.classes[c.key] })),
+  }));
+  card.appendChild(buildChart(samples, series, { area: false, single: false, endLabels: true }));
+  return card;
+}
+
+// ---- the chart itself (inline SVG) ----
+
+function buildChart(samples, series, opts) {
+  const plot = el("div", { class: "plot" });
+  const tooltip = el("div", { class: "tooltip" });
+  plot.appendChild(tooltip);
+
+  const width = Math.max(plot.clientWidth || 640, 320);
+  const height = opts.single ? 260 : 300;
+  const m = { top: 16, right: opts.endLabels ? 92 : 20, bottom: 28, left: 40 };
+  const plotW = width - m.left - m.right;
+  const plotH = height - m.top - m.bottom;
+
+  const times = samples.map((s) => s.t.getTime());
+  const t0 = Math.min(...times), t1 = Math.max(...times);
+  const spanMs = t1 - t0;
+  const allVals = series.flatMap((s) => s.points.map((p) => p.v)).filter((v) => v != null);
+  const yMax = niceMax(allVals.length ? Math.max(...allVals) : 5);
+
+  const xOf = (t) => spanMs === 0 ? m.left + plotW / 2 : m.left + ((t - t0) / spanMs) * plotW;
+  const yOf = (v) => m.top + plotH - (v / yMax) * plotH;
+
+  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none", role: "img" });
+
+  // gridlines + y ticks
+  for (const tick of niceTicks(yMax, 4)) {
+    const y = yOf(tick);
+    svg.appendChild(el("line", { x1: m.left, y1: y, x2: m.left + plotW, y2: y, stroke: "var(--grid)", "stroke-width": 1 }));
+    svg.appendChild(el("text", { x: m.left - 8, y: y + 4, "text-anchor": "end", fill: "var(--text-muted)", "font-size": 11, text: fmtInt(tick) }));
+  }
+  // x ticks
+  const xTickCount = Math.min(6, Math.max(2, samples.length));
+  for (let i = 0; i < xTickCount; i++) {
+    const t = spanMs === 0 ? t0 : t0 + (spanMs * i) / (xTickCount - 1);
+    const x = xOf(t);
+    svg.appendChild(el("text", { x, y: height - 8, "text-anchor": "middle", fill: "var(--text-muted)", "font-size": 11, text: fmtAxisTime(new Date(t), spanMs) }));
+  }
+  // baseline
+  svg.appendChild(el("line", { x1: m.left, y1: yOf(0), x2: m.left + plotW, y2: yOf(0), stroke: "var(--axis)", "stroke-width": 1 }));
+
+  // series marks — break lines at null (failed) points
+  for (const s of series) {
+    const segments = splitSegments(s.points);
+    if (opts.area && s.area !== false) {
+      for (const seg of segments) {
+        if (seg.length < 2) continue;
+        let d = `M ${xOf(seg[0].t.getTime())} ${yOf(0)}`;
+        for (const p of seg) d += ` L ${xOf(p.t.getTime())} ${yOf(p.v)}`;
+        d += ` L ${xOf(seg[seg.length - 1].t.getTime())} ${yOf(0)} Z`;
+        svg.appendChild(el("path", { d, fill: s.color, "fill-opacity": 0.12, stroke: "none" }));
+      }
+    }
+    for (const seg of segments) {
+      if (seg.length === 1) {
+        svg.appendChild(el("circle", { cx: xOf(seg[0].t.getTime()), cy: yOf(seg[0].v), r: 3.5, fill: s.color }));
+        continue;
+      }
+      const d = seg.map((p, i) => `${i ? "L" : "M"} ${xOf(p.t.getTime())} ${yOf(p.v)}`).join(" ");
+      svg.appendChild(el("path", { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    }
+  }
+
+  // direct end-labels — only when few enough series to place without collisions
+  // (the legend carries identity when there are more); declutter what we do show
+  if (opts.endLabels && series.length <= 4) {
+    const labels = [];
+    for (const s of series) {
+      const last = [...s.points].reverse().find((p) => p.v != null);
+      if (last) labels.push({ label: s.label, color: s.color, x: xOf(last.t.getTime()), yData: yOf(last.v) });
+    }
+    labels.sort((a, b) => a.yData - b.yData);
+    const gap = 14;
+    let prev = -Infinity;
+    for (const L of labels) { L.yText = Math.max(L.yData, prev + gap); prev = L.yText; }
+    const overflow = labels.length ? labels[labels.length - 1].yText - (m.top + plotH) : 0;
+    if (overflow > 0) for (const L of labels) L.yText -= overflow;
+    for (const L of labels) {
+      svg.appendChild(el("circle", { cx: L.x, cy: L.yData, r: 3, fill: L.color }));
+      svg.appendChild(el("text", { x: L.x + 8, y: L.yText + 4, fill: "var(--text-secondary)", "font-size": 11, text: L.label }));
+    }
+  }
+
+  // hover overlay
+  const focus = el("g", { style: "opacity:0" });
+  const vline = el("line", { y1: m.top, y2: m.top + plotH, stroke: "var(--axis)", "stroke-width": 1 });
+  focus.appendChild(vline);
+  const focusDots = series.map((s) => {
+    const c = el("circle", { r: 4, fill: "var(--surface)", stroke: s.color, "stroke-width": 2 });
+    focus.appendChild(c);
+    return { s, c };
+  });
+  svg.appendChild(focus);
+
+  const overlay = el("rect", { x: m.left, y: m.top, width: plotW, height: plotH, fill: "transparent" });
+  svg.appendChild(overlay);
+
+  overlay.addEventListener("mousemove", (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) * (width / rect.width);
+    let best = 0, bestD = Infinity;
+    samples.forEach((s, i) => { const d = Math.abs(xOf(s.t.getTime()) - px); if (d < bestD) { bestD = d; best = i; } });
+    const sample = samples[best];
+    const fx = xOf(sample.t.getTime());
+    focus.style.opacity = "1";
+    vline.setAttribute("x1", fx); vline.setAttribute("x2", fx);
+    for (const { s, c } of focusDots) {
+      const v = s.points[best]?.v;
+      if (v == null) { c.style.opacity = "0"; continue; }
+      c.style.opacity = "1"; c.setAttribute("cx", fx); c.setAttribute("cy", yOf(v));
+    }
+    showTooltip(tooltip, plot, rect, ev, sample, series, best, opts.single);
+  });
+  overlay.addEventListener("mouseleave", () => { focus.style.opacity = "0"; tooltip.style.opacity = "0"; });
+
+  plot.appendChild(svg);
+  return plot;
+}
+
+function splitSegments(points) {
+  const segs = []; let cur = [];
+  for (const p of points) {
+    if (p.v == null) { if (cur.length) segs.push(cur); cur = []; }
+    else cur.push(p);
+  }
+  if (cur.length) segs.push(cur);
+  return segs;
+}
+
+function showTooltip(tooltip, plot, svgRect, ev, sample, series, idx, single) {
+  tooltip.innerHTML = "";
+  tooltip.appendChild(el("div", { class: "t-time", text: fmtFullTime(sample.t) }));
+  const rows = single
+    ? [{ label: "Players online", color: cssVar("--series-total"), v: sample.total }]
+    : series.map((s) => ({ label: s.label, color: s.color, v: s.points[idx]?.v }));
+  for (const r of rows) {
+    const row = el("div", { class: "t-row" });
+    row.appendChild(el("span", { class: "dot", style: `background:${r.color}` }));
+    row.appendChild(el("span", { class: "t-lbl", text: r.label }));
+    row.appendChild(el("span", { class: "t-val", text: r.v == null ? "—" : fmtInt(r.v) }));
+    tooltip.appendChild(row);
+  }
+  const localX = ev.clientX - svgRect.left;
+  const place = localX > svgRect.width / 2 ? localX - tooltip.offsetWidth - 14 : localX + 14;
+  tooltip.style.left = Math.max(0, place) + "px";
+  tooltip.style.top = "8px";
+  tooltip.style.opacity = "1";
+}
+
+function renderFooter() {
+  const f = document.getElementById("footer");
+  f.innerHTML = "";
+
+  f.appendChild(el("div", {
+    class: "note",
+    text: "Counts are active connected clients, not unique players. Many players multibox.",
+  }));
+
+  const gen = state.data && state.data.generated_at ? new Date(state.data.generated_at) : null;
+  f.appendChild(el("div", {
+    text: `${state.samples.length} samples · times shown in ${localTZLabel()}`
+      + (gen ? ` · data generated ${fmtFullTime(gen)}` : ""),
+  }));
+}
+
+// ---- theme toggle ----
+
+function initTheme() {
+  const saved = localStorage.getItem("pop-theme");
+  if (saved) document.documentElement.dataset.theme = saved;
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("pop-theme", next);
+    if (state.samples.length) render();
+  });
+}
+
+initTheme();
+load();
+</script>
+</body>
+</html>
